@@ -4,7 +4,7 @@
  * Description:       Design stunning mobile navigation and dropdown menus in minutes using the native WordPress block editor — no coding required.
  * Requires at least: 6.5
  * Requires PHP:      7.4
- * Version:           0.2.5
+ * Version:           0.2.6
  * Author:            OllieWP Team
  * Author URI:        https://olliewp.com
  * License:           GPL-3.0-or-later
@@ -55,12 +55,17 @@ function omd_add_multisite_urls() {
 		return;
 	}
 
+	// Generate a preview token for iframe authentication (cookies may not be sent)
+	$preview_token = wp_generate_password( 32, false );
+	set_transient( 'omd_preview_token_' . $preview_token, get_current_user_id(), HOUR_IN_SECONDS );
+
 	// Provide correct URLs for multisite environments
 	?>
 	<script>
 		window.menuDesignerData = {
 			siteUrl: <?php echo wp_json_encode( home_url() ); ?>,
-			adminUrl: <?php echo wp_json_encode( admin_url() ); ?>
+			adminUrl: <?php echo wp_json_encode( admin_url() ); ?>,
+			previewToken: <?php echo wp_json_encode( $preview_token ); ?>
 		};
 	</script>
 	<?php
@@ -109,6 +114,11 @@ add_action( 'plugins_loaded', function () {
  * @return void
  */
 function omd_admin_notice_ollie_pro() {
+	// Don't show if Ollie Pro is already active.
+	if ( defined( 'OLPO_VERSION' ) ) {
+		return;
+	}
+
 	// Only show to users who can manage options.
 	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
