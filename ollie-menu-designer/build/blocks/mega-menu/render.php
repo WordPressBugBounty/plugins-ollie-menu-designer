@@ -27,6 +27,7 @@ $justify_menu           = esc_attr( $attributes['justifyMenu'] ?? '');
 $menu_width             = esc_attr( $attributes['width'] ?? 'content');
 $custom_width           = intval( $attributes['customWidth'] ?? 600 );
 $top_spacing            = intval( $attributes['topSpacing'] ?? 0 );
+$animation              = esc_attr( $attributes['animation'] ?? 'fade' );
 
 // Generate unique ID for ARIA attributes
 $unique_id = wp_unique_id( 'mega-menu-' );
@@ -57,6 +58,7 @@ $wrapper_attributes = get_block_wrapper_attributes(
 $menu_classes  = 'wp-block-ollie-mega-menu__menu-container';
 $menu_classes .= ' menu-width-' . $menu_width;
 $menu_classes .= $justify_menu ? ' menu-justified-' . $justify_menu : '';
+$menu_classes .= 'slide' === $animation ? ' menu-animation-slide' : '';
 
 // Icons.
 $close_icon  = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.5 10.3L17.6 4L16.6 3L10.5 9.2L4.4 3L3.4 4L9.5 10.3L3 17L4 18L10.5 11.4L17 18L18 17L11.5 10.3Z" fill="black"/></svg>';
@@ -91,43 +93,62 @@ $allowed_html = array(
 	data-wp-context='{ "menuOpenedBy": { "click": false, "focus": false, "hover": false }, "showOnHover": <?php echo $show_on_hover ? 'true' : 'false'; ?>, "url": "<?php echo esc_attr( $url ); ?>", "topSpacing": <?php echo intval( $top_spacing ); ?> }'
 	data-wp-on--focusout="actions.handleMenuFocusout"
 	data-wp-on--keydown="actions.handleMenuKeydown"
+	data-wp-on--mouseenter="actions.handleMouseEnter"
+	data-wp-on--mouseleave="actions.handleMouseLeave"
 	data-wp-watch="callbacks.initMenu"
 	data-wp-watch--layout="callbacks.initMenuLayout"
 	data-wp-on-window--resize="actions.handleResize"
 >
 	<?php
-	// Common attributes for both button and anchor
-	$toggle_content = '<span class="wp-block-navigation-item__label">' . $label . '</span>';
+	// Label and optional description for the top-level item.
+	$item_content = '<span class="wp-block-navigation-item__label">' . $label . '</span>';
 	if ( $description ) {
-		$toggle_content .= '<span id="' . esc_attr( $unique_id ) . '-desc" class="wp-block-navigation-item__description">' . $description . '</span>';
+		$item_content .= '<span id="' . esc_attr( $unique_id ) . '-desc" class="wp-block-navigation-item__description">' . $description . '</span>';
 	}
-	$toggle_content .= '<span class="wp-block-ollie-mega-menu__toggle-icon" aria-hidden="true">' . $toggle_icon . '</span>';
-
-	$use_link = $show_on_hover && $url;
-	$tag_name = $use_link ? 'a' : 'button';
-	$extra_attrs = $use_link ? 'href="' . esc_url( $url ) . '"' : '';
+	$toggle_icon_html = '<span class="wp-block-ollie-mega-menu__toggle-icon" aria-hidden="true">' . $toggle_icon . '</span>';
 	?>
-	<<?php echo esc_html( $tag_name ); ?>
-		<?php echo wp_kses_post( $extra_attrs ); ?>
-		id="<?php echo esc_attr( $button_id ); ?>"
-		class="wp-block-ollie-mega-menu__toggle wp-block-navigation-item__content"
-		data-wp-on--click="actions.toggleMenuOnClick"
-		data-wp-on--focus="actions.openMenuOnFocus"
-		data-wp-on--mouseenter="actions.handleMouseEnter"
-		data-wp-on--mouseleave="actions.handleMouseLeave"
-		data-wp-bind--aria-expanded="state.isMenuOpen"
-		aria-controls="<?php echo esc_attr( $menu_id ); ?>"
-		<?php if ( $title ) : ?>
-		title="<?php echo esc_attr( $title ); ?>"
-		<?php endif; ?>
-		<?php if ( $description ) : ?>
-		aria-describedby="<?php echo esc_attr( $unique_id ); ?>-desc"
-		<?php endif; ?>
-	>
-		<?php
-		echo wp_kses( $toggle_content, $allowed_html );
-		?>
-	</<?php echo esc_html( $tag_name ); ?>>
+	<?php if ( $url ) : ?>
+		<a
+			class="wp-block-ollie-mega-menu__link wp-block-navigation-item__content"
+			href="<?php echo esc_url( $url ); ?>"
+			<?php if ( $title ) : ?>
+			title="<?php echo esc_attr( $title ); ?>"
+			<?php endif; ?>
+			<?php if ( $description ) : ?>
+			aria-describedby="<?php echo esc_attr( $unique_id ); ?>-desc"
+			<?php endif; ?>
+		>
+			<?php echo wp_kses( $item_content, $allowed_html ); ?>
+		</a>
+		<button
+			id="<?php echo esc_attr( $button_id ); ?>"
+			class="wp-block-ollie-mega-menu__toggle wp-block-ollie-mega-menu__submenu-toggle"
+			type="button"
+			data-wp-on--click="actions.toggleMenuOnClick"
+			data-wp-bind--aria-expanded="state.isMenuOpen"
+			aria-controls="<?php echo esc_attr( $menu_id ); ?>"
+			aria-label="<?php echo esc_attr( sprintf( /* translators: %s: menu item label. */ __( '%s submenu', 'ollie-menu-designer' ), $label ) ); ?>"
+		>
+			<?php echo wp_kses( $toggle_icon_html, $allowed_html ); ?>
+		</button>
+	<?php else : ?>
+		<button
+			id="<?php echo esc_attr( $button_id ); ?>"
+			class="wp-block-ollie-mega-menu__toggle wp-block-navigation-item__content"
+			type="button"
+			data-wp-on--click="actions.toggleMenuOnClick"
+			data-wp-bind--aria-expanded="state.isMenuOpen"
+			aria-controls="<?php echo esc_attr( $menu_id ); ?>"
+			<?php if ( $title ) : ?>
+			title="<?php echo esc_attr( $title ); ?>"
+			<?php endif; ?>
+			<?php if ( $description ) : ?>
+			aria-describedby="<?php echo esc_attr( $unique_id ); ?>-desc"
+			<?php endif; ?>
+		>
+			<?php echo wp_kses( $item_content . $toggle_icon_html, $allowed_html ); ?>
+		</button>
+	<?php endif; ?>
 
 	<div
 		id="<?php echo esc_attr( $menu_id ); ?>"
@@ -135,8 +156,6 @@ $allowed_html = array(
 		tabindex="-1"
 		data-top-spacing="<?php echo intval( $top_spacing ); ?>"
 		data-custom-width="<?php echo intval( $custom_width ); ?>"
-		data-wp-on--mouseenter="actions.handleMenuMouseEnter"
-		data-wp-on--mouseleave="actions.handleMenuMouseLeave"
 		role="group"
 		aria-labelledby="<?php echo esc_attr( $button_id ); ?>"
 	>
